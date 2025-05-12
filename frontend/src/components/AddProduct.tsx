@@ -39,14 +39,21 @@ const AddProduct = () => {
         e.preventDefault();
         const valLength = Object.keys(validateFormData()).length
         if(valLength === 0){
-            console.log("call the API to save the data")
-            console.log(product)
             try{
-                const res = await fetch("http://localhost:5001/")
-                if(res.status != 200){
-                    throw new Error(`Error is ${res.status}`)
-                }
+                const res = await fetch("http://localhost:5002/api/products", {
+                    method: 'post',
+                    body: JSON.stringify(
+                        product
+                    ),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                
                 const json = await res.json();
+                if(json.status != 200){
+                    throw new Error(`Error is ${json.status}`)
+                }
                 console.log(json);
             } catch(err) {
                 console.error(`${err.status} Error message`);
@@ -80,7 +87,7 @@ const AddProduct = () => {
                 {
                     error.quantity && <div style={styles.error}>{error.quantity}</div>
                 }
-                <label>Price:</label>
+                <label>Unit Price:</label>
                 <input type="number" name="price" defaultValue={product.price} onChange={handleChange}/>
                 {
                     error.price && <div style={styles.error}>{error.price}</div>
