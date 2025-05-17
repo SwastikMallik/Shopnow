@@ -20,6 +20,7 @@
 
 .blck{color:#000}
 .error-msg{color:rgb(153, 9, 9); margin:0px}
+.thank-you-message{display: none;}
 
 /* The Modal (background) */
 .modal {

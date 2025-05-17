@@ -1,13 +1,30 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Header from "../Header"
 
 const Signup = () => {
 
     const [data, setData] = useState({})
     const [error, setError] = useState({})
+    const passwordRef = useRef(null)
+    const thankyouRef = useRef()
+    const thankYouMessage = "User Inserted Successfully"
 
     function handleOnChange(event){
-        const{name, value, checked, type} = event.target
+        const { name, value, checked, type } = event.target;
+        // If there's an error for this field, remove it
+        setError((prev) => {
+            let rest;
+          
+            if (name === "terms") {
+              const { terms, termsMessage, ...remaining } = prev;
+              rest = remaining;
+            } else {
+              const { [name]: _, ...remaining } = prev;
+              rest = remaining;
+            }
+          
+            return rest;
+          });
         
         console.log(`Name : ${name}, Value: ${value}, Checked: ${checked}, Type: ${type}`)
         
@@ -19,22 +36,28 @@ const Signup = () => {
     }
 
     function validationFormData(){
-        if(!data.terms) 
-            {
-                error.terms = false
-            } else {
-            setError((prev)=>{
-                const {terms, ...rest} = prev
-                return rest
-            })}
-        if(error.confirmpassword) {error.confirmpassword = false} else {
-            setError(()=>{
-                const {confirmpassword, ...rest} = error
-                return rest
-            })
+        //Terms Validation
+
+        const errorObj = {}
+        if(data.terms){
+            //After the terms get loaded in the data state, need to remove it validation error from the error state
+            if(error.terms){
+                setError((prev)=>{
+                    const {terms, termsMessage, ...rest} = prev
+                    return rest
+
+                })
+            }
+        } else {
+            errorObj.termsMessage = "Please accept the terms and conditions"
+            setError((prev)=>({
+                ...prev,
+                terms: false,
+                termsMessage: errorObj.termsMessage
+            }))
         }
-        console.log(123)
-        return error
+        return errorObj
+        
     }
 
     function comparePassword(e) {
@@ -45,6 +68,7 @@ const Signup = () => {
                 ...prev,
                 password: "Please Enter Password"
             }));
+            passwordRef.current?.focus()
         }
     
         if (data.password !== confirmPassword) {
@@ -53,24 +77,28 @@ const Signup = () => {
                 confirmpassword: "Passwords do not match"
             }));
             setData((prev)=>{
-                const {password, ...rest} = prev
+                const {password, confirmpassword, ...rest} = prev
                 return rest
             });
+            passwordRef.current?.focus()
         }
-        console.log(321)
     }
     
 
     useEffect(()=>{
-        console.log(data)
-    },[data])
+        console.log(data, "data")
+        console.log(error, "error effect")
+    },[data, error])
+
+    const handleReset = () => {
+        setData({})
+        setError({})
+    }
 
     const handleSubmitSignupForm = async (event) => {
         event.preventDefault();
         const logErr = Object.keys(validationFormData()).length
-        if(!logErr){
-            const {cpassword, ...rest} = data
-            const userData = rest
+        if(logErr < 1){
             try{
                 //Call the API
                 const apiCall = await fetch('http://localhost:5002/signup',{
@@ -78,22 +106,53 @@ const Signup = () => {
                     headers: {
                         'content-type': 'application/json'
                     },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify(data, (key, value)=>
+                        (key==="confirmpassword") ? undefined : value
+                    )
                 })
                 if(apiCall.ok){
                     const response = await apiCall.json()
                     console.log(response)
+                    alert("Signup Successfull")
+                    setData({})
+                    thankyouRef.current.style.display = "block"
+                } else if(apiCall.status === 400){
+                    const errResponse = await apiCall.json();
+                    const updatedErrors = {}
+
+                    //Check if the error is already present in the state
+                    const fields = [ 'username', 'emailid', 'password' ]
+
+                    fields.forEach((field) => {
+                        if (errResponse.errors?.[field]) {
+                          updatedErrors[field] = errResponse.errors[field];
+                        }
+                      });
+                    //Reset Data from the State
+
+                    setData((prev) => {
+                        const errkey = Object.keys(updatedErrors);
+                        return Object.keys(prev).reduce((acc, key) => {
+                          if (!errkey.includes(key)) {
+                            acc[key] = prev[key];
+                          }
+                          return acc;
+                        }, {});
+                      });
+                    
+
+                    setError((prev)=>({
+                        ...prev,
+                        ...updatedErrors
+                    }))
                 } else {
-                    throw new Error("Something went wrong")
+                    throw new Error(`Unexpected error (${apiCall.status}): ${apiCall.statusText}`)
                 }
-                
-                console.log("hurray you are In now", userData)
             } catch(error){
                 console.error(`These are the following error, ${error}`)
             }
             
         }
-        console.log("Submit and run", logErr)
     }
 
     return (
@@ -102,28 +161,38 @@ const Signup = () => {
             <Header/>
             <form onSubmit={handleSubmitSignupForm}>
                 <label htmlFor="uname">Username</label><br/>
-                <input type="text" id="uname" name="username" value={data.name} onChange={handleOnChange}/><br/>
+                <input type="text" id="uname" name="username" value={data.username || ''} onChange={handleOnChange}/><br/>
+                {error.username && <span><strong>{error.username}</strong><br/></span>}
 
                 <label htmlFor="email">Email ID</label><br/>
-                <input type="email" id="email" name="emailid" value={data.email} onChange={handleOnChange}/><br/>
+                <input type="text" id="email" name="emailid" value={data.emailid || ''} onChange={handleOnChange}/><br/>
+                {error.emailid && <span><strong>{error.emailid}</strong><br/></span>}
 
                 <label htmlFor="password">Password</label><br/>
-                <input type="password" id="password" name="password" value={data.password || ""} onChange={handleOnChange}/><br/>
+                <input type="password" id="password" ref={passwordRef} name="password" value={data.password || ''} onChange={handleOnChange}/><br/>
                 <p>
                     {error.confirmpassword && <strong>{error.confirmpassword}</strong>}
+                    {error.password && <span><strong>{error.password}</strong><br/></span>}
                 </p>
 
                 <label htmlFor="cpassword"> Confirm Password </label><br/>
-                <input type="password" id="cpassword" name="cpassword" value={data.cpassword} onChange={handleOnChange} onBlur={comparePassword}/>
+                <input type="password" id="cpassword" name="confirmpassword" value={data.confirmpassword || ''} onChange={handleOnChange} onBlur={comparePassword}/>
                 <br/>
                 <br/>
                 <button>Signup</button> 
-                <button>Reset</button>
+                <button onClick={handleReset}>Reset</button>
                 <br/>
                 <br/>
                 <input type="checkbox" id="terms" name="terms" onChange={handleOnChange}/>
-                <label htmlFor="terms"> Terms & Conditions</label><br></br>
+                <label htmlFor="terms"> Terms & Conditions</label><br/>
+                { error.termsMessage && <span><strong>{error.termsMessage}</strong></span> }
+                <br/>
             </form>
+            <div ref={thankyouRef} className="thank-you-message">
+                <h2>
+                    {thankYouMessage}
+                </h2>
+            </div>
         </>
     )
 }

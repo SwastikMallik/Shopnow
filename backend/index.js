@@ -50,13 +50,13 @@ app.post("/signup", async (req, res)=>{
     
     //Email id validation
     if(!eid){
-        error.email = "Email can't be empty"
+        error.emailid = "Email can't be empty"
     } else {
         let regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (regex.test(eid)) {
             console.log("Valid Email address");
         } else {
-            error.email = "Invalid Email address"
+            error.emailid = "Invalid Email address"
             console.log("Invalid Email address");
         }
     }
